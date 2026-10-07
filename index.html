@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="lo">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AUGUSTX HOME COFFEE</title>
+    <!-- เพิ่ม Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <style>
+        :root { --blue: #1a365d; --black: #111111; --white: #f8f9fa; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--white); color: var(--black); margin: 0; padding: 0; background-image: url('images/bg.jpg'); background-size: cover; background-attachment: fixed; background-position: center; }
+        header { background-color: var(--blue); color: white; text-align: center; padding: 2rem 1rem; }
+        header h1 { margin: 0; font-size: 2.5rem; letter-spacing: 2px; font-weight: 900; }
+        header p { margin-top: 5px; font-size: 1.2rem; letter-spacing: 4px; }
+        
+        .container { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
+        .category-title { text-align: center; font-size: 2rem; font-weight: bold; margin-top: 2rem; margin-bottom: 1rem; border-bottom: 2px solid var(--black); display: inline-block; padding-bottom: 5px; text-transform: uppercase; }
+        .text-center { text-align: center; }
+        
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 3rem; }
+        .card { background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 1.5rem; text-align: center; border-left: 5px solid var(--blue); display: flex; flex-direction: column; justify-content: space-between; }
+        .product-image { width: 100%; height: 250px; object-fit: cover; border-radius: 6px; margin-bottom: 15px; background-color: #eee; }
+        .card h3 { margin: 0 0 15px 0; font-size: 1.1rem; text-transform: uppercase; }
+        
+        select { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; }
+        button.add-btn { background-color: var(--black); color: white; border: none; padding: 10px 15px; width: 100%; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.3s; margin-top: auto; }
+        button.add-btn:hover { background-color: var(--blue); }
+        
+        .cart-icon { position: fixed; top: 20px; right: 20px; background: var(--black); color: white; padding: 10px 20px; border-radius: 30px; cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index: 100; }
+        .cart-sidebar { position: fixed; top: 0; right: -400px; width: 350px; height: 100%; background: white; box-shadow: -4px 0 10px rgba(0,0,0,0.1); transition: 0.3s; padding: 20px; z-index: 101; overflow-y: auto; }
+        .cart-sidebar.open { right: 0; }
+        .cart-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--blue); padding-bottom: 10px; margin-bottom: 10px; }
+        .close-cart { cursor: pointer; font-size: 1.5rem; font-weight: bold; }
+        
+        .receipt-bill { background: white; border: 1px dashed #ccc; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .receipt-header { text-align: center; font-size: 1.2rem; font-weight: bold; color: var(--blue); margin-bottom: 15px; }
+        .cart-item { display: flex; flex-direction: column; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
+        .item-row-1 { display: flex; justify-content: space-between; margin-bottom: 8px; }
+        .item-name { font-weight: bold; font-size: 0.95rem; max-width: 65%; line-height: 1.3; }
+        .item-price { font-weight: bold; font-size: 0.95rem; }
+        .item-row-2 { display: flex; justify-content: space-between; align-items: center; }
+        .qty-controls { display: flex; align-items: center; gap: 12px; }
+        .qty-btn { background: #f1f1f1; border: 1px solid #ddd; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 1rem; color: var(--black); }
+        .remove-btn { color: #dc3545; background: none; border: none; cursor: pointer; font-size: 0.9rem; text-decoration: underline; padding: 0; font-family: inherit;}
+        .item-note-input { width: 100%; padding: 8px; margin-top: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 0.85rem; font-family: inherit; box-sizing: border-box; background-color: #fafafa; }
+        .receipt-total { display: flex; justify-content: space-between; font-size: 1.2rem; font-weight: bold; margin-top: 15px; padding-top: 15px; border-top: 2px solid var(--black); }
+        .checkout-btn { background-color: var(--black); color: white; border: none; padding: 15px; width: 100%; font-size: 1.1rem; border-radius: 8px; cursor: pointer; margin-top: 20px; font-weight: bold; }
+        
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(3px); }
+        
+        /* Store Closed Overlay */
+        #store-closed-overlay { background: rgba(26, 54, 93, 0.95); flex-direction: column; color: white; text-align: center; padding: 20px; z-index: 9999; }
+        #store-closed-overlay h1 { font-size: 2.5rem; margin-bottom: 10px; color: #ef4444; }
+        #store-closed-overlay p { font-size: 1.2rem; letter-spacing: 1px; }
+
+        /* Receipt Modal */
+        .receipt-wrapper { background: white; padding: 20px; border-radius: 10px; width: 90%; max-width: 380px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .receipt-slip-preview { background: #fff; border: 1px solid #eee; padding: 20px; border-radius: 5px; box-shadow: inset 0 0 10px rgba(0,0,0,0.03); font-family: 'Courier New', Courier, monospace; color: #333; margin-bottom: 20px; }
+        .preview-brand { text-align: center; margin: 0; font-size: 1.8rem; font-weight: 900; letter-spacing: 1px; }
+        .preview-sub { text-align: center; margin: 3px 0 12px; font-size: 0.9rem; letter-spacing: 2px; }
+        .preview-date { text-align: center; font-size: 0.8rem; margin-bottom: 5px; }
+        .preview-order-num { text-align: center; font-size: 0.9rem; font-weight: bold; margin-bottom: 8px; color: var(--blue); }
+        .preview-customer-box { text-align: center; margin-bottom: 8px; display: flex; flex-direction: column; gap: 6px; }
+        .customer-name-input { width: 90%; margin: 0 auto; padding: 6px 10px; border: 1px dashed #1a365d; border-radius: 4px; font-size: 0.95rem; font-family: inherit; text-align: center; background-color: #f8fafc; color: #1a365d; box-sizing: border-box; }
+        .phone-group { display: flex; align-items: center; justify-content: center; width: 90%; margin: 0 auto; border: 1px solid #25D366; border-radius: 4px; background-color: #fff; overflow: hidden; box-sizing: border-box; }
+        .phone-prefix { background-color: #f0fdf4; color: #166534; padding: 6px 8px; font-weight: bold; font-size: 0.9rem; border-right: 1px solid #bbf7d0; white-space: nowrap; }
+        .phone-input { flex: 1; border: none; padding: 6px 8px; font-size: 0.95rem; font-family: inherit; outline: none; background: transparent; }
+        .foreign-phone-check { font-size: 0.8rem; text-align: left; width: 90%; margin: 2px auto 0; color: #555; display: flex; align-items: center; gap: 5px; cursor: pointer; }
+        .preview-dashed { border-top: 1px dashed #aaa; margin: 10px 0; }
+        .preview-item-group { margin-bottom: 18px; }
+        .preview-item { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 0.95rem; }
+        .preview-item-left { max-width: 75%; line-height: 1.4; }
+        .preview-item-qty { font-weight: bold; color: var(--blue); }
+        .preview-item-note { font-size: 0.8rem; color: #777; margin-left: 18px; font-style: italic;}
+        .preview-total-row { display: flex; justify-content: space-between; font-weight: bold; font-size: 1.2rem; margin: 15px 0; }
+        .preview-warning { text-align: center; font-size: 0.8rem; color: #d9534f; margin-top: 8px; font-weight: bold; line-height: 1.3; }
+        
+        .modal-actions { display: flex; flex-direction: column; gap: 8px; }
+        .action-row { display: flex; gap: 8px; width: 100%; }
+        .btn-back { flex: 1; padding: 10px; border: 1px solid #ccc; background: white; border-radius: 6px; cursor: pointer; font-weight: bold; color: #333; }
+        .btn-print { flex: 1; padding: 10px; border: none; background: #475569; color: white; border-radius: 6px; cursor: pointer; font-weight: bold; display: none; }
+        .btn-confirm { width: 100%; padding: 12px; border: none; background: #25D366; color: white; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        
+        /* Print CSS */
+        @media print {
+            body * { visibility: hidden; }
+            #receipt-slip-preview, #receipt-slip-preview * { visibility: visible; }
+            #receipt-slip-preview { position: absolute; left: 0; top: 0; width: 100%; border: none; box-shadow: none; padding: 0; margin: 0; }
+            .customer-name-input, .phone-group, .foreign-phone-check { display: none !important; }
+            #print-customer-display { display: block !important; font-size: 0.9rem; font-weight: bold; text-align: center; margin-bottom: 5px; }
+        }
+        #print-customer-display { display: none; }
+    </style>
+</head>
+<body>
+    
+    <!-- หน้าจอแสดงเมื่อร้านปิด -->
+    <div id="store-closed-overlay" class="modal-overlay">
+        <h1>🔴 ຮ້ານປິດຮັບອໍເດີ້ອອນລາຍຊົ່ວຄາວ</h1>
+        <p>ຂໍອະໄພໃນຄວາມບໍ່ສະດວກ, ກະລຸນາກັບມາໃຊ້ບໍລິການໃໝ່ພາຍຫຼັງ</p>
+    </div>
+
+    <div class="cart-icon" onclick="toggleCart()">🛒 ຕະກ່າ (<span id="cart-count">0</span>)</div>
+    
+    <header>
+        <h1>AUGUSTX</h1>
+        <p>HOME COFFEE</p>
+    </header>
+
+    <!-- พื้นที่แสดงเมนูที่ดึงมาจากฐานข้อมูล (Dynamic Menu) -->
+    <div class="container" id="dynamic-menu-container">
+        <div class="text-center" style="margin-top: 50px;">
+            <h2 style="color: #888;">⏳ ກຳລັງໂຫຼດເມນູຈາກລະບົບ...</h2>
+        </div>
+    </div>
+
+    <!-- Sidebar ตะกร้าสินค้า -->
+    <div class="cart-sidebar" id="cart">
+        <div class="cart-header">
+            <h2>ກະຕ່າສິນຄ້າ</h2>
+            <span class="close-cart" onclick="toggleCart()">×</span>
+        </div>
+        <div id="receipt-area" class="receipt-bill">
+            <div class="receipt-header">ລາຍການສັ່ງຊື້</div>
+            <div id="cart-items"></div>
+            <div class="receipt-total">
+                <span>ລວມທັງໝົດ:</span>
+                <span><span id="total-price">0</span> LAK</span>
+            </div>
+        </div>
+        <button class="checkout-btn" onclick="showReceiptPreview()">ກວດສອບບິນ (Preview)</button>
+    </div>
+
+    <!-- หน้าต่าง Preview บิล -->
+    <div id="receipt-modal" class="modal-overlay">
+        <div class="receipt-wrapper">
+            <div id="receipt-slip-preview" class="receipt-slip-preview">
+                <div class="preview-brand">AUGUSTX</div>
+                <div class="preview-sub">HOME COFFEE</div>
+                <div class="preview-date" id="preview-date"></div>
+                <div class="preview-order-num" id="preview-order-num"></div>
+                <div id="print-customer-display"></div>
+                
+                <div class="preview-customer-box">
+                    <input type="text" id="customer-name-input" class="customer-name-input" placeholder="+ ເພີ່ມຊື່ (ຖ້າມີ)" oninput="updatePrintCustomer(this.value)">
+                    <div class="phone-group">
+                        <span id="phone-prefix" class="phone-prefix">+856 20</span>
+                        <input type="tel" id="customer-phone-input" class="phone-input" placeholder="ປ້ອນເບີ 8 ຕົວທ້າຍ..." maxlength="15">
+                    </div>
+                    <label class="foreign-phone-check">
+                        <input type="checkbox" id="foreign-phone-toggle" onchange="togglePhoneMode()"> ລູກຄ້າຕ່າງປະເທດ (ລະຫັດອື່ນ)
+                    </label>
+                </div>
+
+                <div class="preview-dashed"></div>
+                <div id="preview-items"></div>
+                <div class="preview-dashed"></div>
+                <div class="preview-total-row">
+                    <span>ລວມທັງໝົດ</span>
+                    <span id="preview-total">0 LAK</span>
+                </div>
+                <div class="preview-dashed"></div>
+                <div class="preview-warning" id="warning-msg">
+                    * <b>ກະລຸນາໃສ່ເບີ WhatsApp</b> ຈຶ່ງສາມາດສົ່ງອໍເດີ້ໄດ້
+                </div>
+            </div>
+            <div class="modal-actions">
+                <div class="action-row" id="action-row-container">
+                    <button class="btn-back" onclick="closeReceiptPreview()">ແກ້ໄຂ</button>
+                    <button class="btn-print" id="print-btn-element" onclick="window.print()">🖨️ ພິມບິນ</button>
+                </div>
+                <button class="btn-confirm" id="confirm-btn" onclick="confirmWhatsApp()">ສົ່ງເຂົ້າ WhatsApp</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDAJUEFUwkieMGFxRIZ6vRwzLbXF31c_BM",
+            authDomain: "augx-d75c2.firebaseapp.com",
+            databaseURL: "https://augx-d75c2-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "augx-d75c2",
+            storageBucket: "augx-d75c2.firebasestorage.app"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        let cart = [];
+        let currentOrderNumberStr = ""; 
+        let nextOrderCountToSave = 1; 
+        let orderDateToSave = ""; 
+
+        const isCashierMode = new URLSearchParams(window.location.search).get('mode') === 'cashier';
+
+        // ---------------- 1. ລະບົບກວດສອບສະຖານະຮ້ານ (Shop Status Check) ----------------
+        database.ref('settings/store_status').on('value', snap => {
+            let status = snap.val();
+            let storeClosedOverlay = document.getElementById('store-closed-overlay');
+            
+            // ຖ້າຮ້ານປິດ ແລະ ບໍ່ແມ່ນໂໝດແຄັດເຊຍ ໃຫ້ບລັອກໜ້າຈໍ
+            if(status && status.isOpen === false && !isCashierMode) {
+                storeClosedOverlay.style.display = 'flex';
+            } else {
+                storeClosedOverlay.style.display = 'none';
+            }
+        });
+
+        // ---------------- 2. ລະບົບດຶງເມນູອັດຕະໂນມັດ (Dynamic Menu Load) ----------------
+        database.ref('menu_items').on('value', snap => {
+            const menuContainer = document.getElementById('dynamic-menu-container');
+            let itemsByCategory = {};
+            
+            snap.forEach(child => {
+                let item = child.val();
+                item.id = child.key;
+                if(!itemsByCategory[item.category]) {
+                    itemsByCategory[item.category] = [];
+                }
+                itemsByCategory[item.category].push(item);
+            });
+
+            // ລຳດັບໝວດໝູ່ທີ່ຕ້ອງການໃຫ້ສະແດງກ່ອນ-ຫຼັງ
+            const categoryOrder = [
+                "BASIC COFFEE", 
+                "BLACK SIGNATURE", 
+                "ANOTHER COFFEE FLAVOR", 
+                "GREEN SELECTION", 
+                "NON-COFFEE"
+            ];
+
+            let finalHtml = '';
+            
+            categoryOrder.forEach(cat => {
+                if(itemsByCategory[cat] && itemsByCategory[cat].length > 0) {
+                    finalHtml += `<div class="text-center"><h2 class="category-title">${cat}</h2></div>`;
+                    finalHtml += `<div class="grid">`;
+                    
+                    itemsByCategory[cat].forEach(item => {
+                        let optId = `opt-${item.id}`;
+                        let sweetId = `sweet-${item.id}`;
+                        
+                        // ສ້າງຊ່ອງລາຄາ/ຕົວເລືອກ
+                        let priceHtml = '';
+                        let hasOptions = item.priceOptions.includes('|');
+                        
+                        if (hasOptions) {
+                            priceHtml = `<select id="${optId}">`;
+                            item.priceOptions.split(',').forEach(opt => {
+                                let parts = opt.split('|');
+                                priceHtml += `<option value="${opt}">${parts[0]} - ${Number(parts[1]).toLocaleString()} LAK</option>`;
+                            });
+                            priceHtml += `</select>`;
+                        } else {
+                            priceHtml = `
+                                <input type="hidden" id="${optId}" value="${item.name}|${item.priceOptions}">
+                                <p style="font-size: 1.1rem; font-weight: bold; margin-bottom: 10px; color: var(--blue);">
+                                    ${Number(item.priceOptions).toLocaleString()} LAK
+                                </p>`;
+                        }
+
+                        // ສ້າງຊ່ອງເລືອກຄວາມຫວານ (ຖ້າມີ)
+                        let sweetHtml = '';
+                        if (item.hasSweetness) {
+                            sweetHtml = `
+                            <select id="${sweetId}">
+                                <option value="ຫວານ 100% (ປົກກະຕິ)">ຫວານ 100% (ປົກກະຕິ)</option>
+                                <option value="ຫວານ 0%">ຫວານ 0%</option>
+                                <option value="ຫວານ 50%">ຫວານ 50%</option>
+                                <option value="ຫວານ 200%">ຫວານ 200%</option>
+                            </select>`;
+                        }
+
+                        // ສ້າງກ່ອງສິນຄ້າ (Card)
+                        finalHtml += `
+                        <div class="card">
+                            <img src="${item.image || 'images/bg.jpg'}" alt="${item.name}" class="product-image" onerror="this.src='images/bg.jpg'">
+                            <h3>${item.name}</h3>
+                            ${priceHtml}
+                            ${sweetHtml}
+                            <button class="add-btn" onclick="addDynamicToCart('${item.name.replace(/'/g, "\\'")}', '${optId}', ${item.hasSweetness ? `'${sweetId}'` : 'null'}, ${hasOptions})">ເພີ່ມ ໃສ່ຕະກ່າ</button>
+                        </div>`;
+                    });
+                    
+                    finalHtml += `</div>`;
+                }
+            });
+
+            if(finalHtml === '') {
+                finalHtml = '<div class="text-center"><h2 style="color: #888;">ບໍ່ມີລາຍການເມນູໃນລະບົບ</h2></div>';
+            }
+            menuContainer.innerHTML = finalHtml;
+        });
+
+        // ---------------- 3. ລະບົບຕະກ່າສິນຄ້າ (Cart System) ----------------
+        function toggleCart() { document.getElementById('cart').classList.toggle('open'); }
+
+        function addDynamicToCart(name, optId, sweetId, hasOptions) {
+            let cleanName = name.replace(/^\d+\.\s*/, '');
+            let optVal = document.getElementById(optId).value;
+            let type = "", price = 0;
+
+            if (hasOptions) {
+                let parts = optVal.split('|');
+                type = parts[0];
+                price = parseInt(parts[1]);
+            } else {
+                let parts = optVal.split('|');
+                price = parseInt(parts[1]);
+            }
+
+            let sweetness = sweetId ? document.getElementById(sweetId).value : "";
+            let fullName = cleanName;
+            
+            if (type) fullName += ` (${type})`;
+            if (sweetness) fullName += ` [${sweetness}]`;
+
+            addToList(fullName, price);
+        }
+
+        function addToList(name, price) {
+            let existingItem = cart.find(item => item.name === name);
+            if (existingItem) {
+                existingItem.qty += 1;
+            } else {
+                cart.push({ name: name, unitPrice: price, qty: 1, note: "" });
+            }
+            updateCartUI();
+            
+            try {
+                if(window.event && window.event.target && window.event.target.tagName === 'BUTTON') {
+                    let btn = window.event.target;
+                    let originalText = btn.innerText;
+                    btn.innerText = "ເພີ່ມແລ້ວ!";
+                    btn.style.backgroundColor = "#25D366";
+                    setTimeout(() => { btn.innerText = originalText; btn.style.backgroundColor = "var(--black)"; }, 1000);
+                }
+            } catch(e) {}
+        }
+
+        function changeQty(index, delta) {
+            cart[index].qty += delta;
+            if (cart[index].qty <= 0) cart.splice(index, 1);
+            updateCartUI();
+        }
+
+        function removeItem(index) { cart.splice(index, 1); updateCartUI(); }
+        function updateNote(index, value) { cart[index].note = value; }
+
+        function updateCartUI() {
+            let html = '', total = 0, totalItems = 0;
+            cart.forEach((item, index) => {
+                let itemTotal = item.unitPrice * item.qty;
+                total += itemTotal;
+                totalItems += item.qty;
+                html += `
+                    <div class="cart-item">
+                        <div class="item-row-1">
+                            <span class="item-name">${item.name}</span>
+                            <span class="item-price">${itemTotal.toLocaleString()} LAK</span>
+                        </div>
+                        <div class="item-row-2">
+                            <div class="qty-controls">
+                                <button class="qty-btn" onclick="changeQty(${index}, -1)">-</button>
+                                <span>${item.qty}</span>
+                                <button class="qty-btn" onclick="changeQty(${index}, 1)">+</button>
+                            </div>
+                            <button class="remove-btn" onclick="removeItem(${index})">ລົບລາຍການ</button>
+                        </div>
+                        <input type="text" class="item-note-input" maxlength="100" placeholder="ໝາຍເຫດ (ບໍ່ເກີນ 100 ຕົວອັກສອນ)..." value="${item.note || ''}" oninput="updateNote(${index}, this.value)">
+                    </div>
+                `;
+            });
+            document.getElementById('cart-items').innerHTML = html || '<p style="text-align:center; color:#888;">ກະຕ່າວ່າງເປົ່າ</p>';
+            document.getElementById('total-price').innerText = total.toLocaleString();
+            document.getElementById('cart-count').innerText = totalItems;
+        }
+
+        // ---------------- 4. Checkout & Preview ----------------
+        function generateRandomString(length) {
+            let result = '';
+            const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            for (let i = 0; i < length; i++) { result += characters.charAt(Math.floor(Math.random() * characters.length)); }
+            return result;
+        }
+
+        function generateOrderNumberData() {
+            let d = new Date();
+            let day = String(d.getDate()).padStart(2, '0');
+            let month = String(d.getMonth() + 1).padStart(2, '0');
+            let year = String(d.getFullYear()).slice(-2);
+            let dateStr = day + month + year; 
+            
+            let prefix = "PC";
+            if (isCashierMode) {
+                prefix = "AUG"; 
+            } else {
+                let isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                prefix = isMobile ? "MB" : "PC";
+            }
+            
+            let savedDate = localStorage.getItem('augustx_order_date');
+            let savedCount = localStorage.getItem('augustx_order_count');
+            let nextCount = 1;
+            if (savedDate === dateStr && savedCount) { nextCount = parseInt(savedCount) + 1; }
+            let countStr = String(nextCount).padStart(3, '0');
+            let randomSuffix = generateRandomString(3);
+            return { orderNum: prefix + dateStr + countStr + "-" + randomSuffix, dateStr: dateStr, nextCount: nextCount };
+        }
+
+        function togglePhoneMode() {
+            let isForeign = document.getElementById('foreign-phone-toggle').checked;
+            let prefixElem = document.getElementById('phone-prefix');
+            let phoneInput = document.getElementById('customer-phone-input');
+            
+            if (isForeign) {
+                prefixElem.innerText = "+";
+                phoneInput.placeholder = "ໃສ່ລະຫັດປະເທດ ແລະ ເບີ...";
+            } else {
+                prefixElem.innerText = "+856 20";
+                phoneInput.placeholder = "ປ້ອນເບີ 8 ຕົວທ້າຍ...";
+            }
+            phoneInput.value = "";
+        }
+
+        function updatePrintCustomer(nameVal) {
+            let displayDiv = document.getElementById('print-customer-display');
+            if(nameVal.trim() !== "") { displayDiv.innerText = "ຊື່ລູກຄ້າ: " + nameVal.trim(); } 
+            else { displayDiv.innerText = ""; }
+        }
+
+        function showReceiptPreview() {
+            if (cart.length === 0) { alert('ກະລຸນາເລືອກສິນຄ້າກ່ອນ!'); return; }
+            
+            let d = new Date();
+            let dateDisplay = d.toLocaleDateString('th-TH') + ' ' + d.toLocaleTimeString('th-TH').slice(0,5);
+            document.getElementById('preview-date').innerText = dateDisplay;
+            
+            let orderData = generateOrderNumberData();
+            currentOrderNumberStr = orderData.orderNum;
+            orderDateToSave = orderData.dateStr;
+            nextOrderCountToSave = orderData.nextCount;
+            
+            document.getElementById('preview-order-num').innerText = "Order No: " + currentOrderNumberStr;
+            document.getElementById('customer-name-input').value = ""; 
+            document.getElementById('print-customer-display').innerText = "";
+            document.getElementById('customer-phone-input').value = "";
+            document.getElementById('foreign-phone-toggle').checked = false;
+            togglePhoneMode();
+            
+            let html = '', total = 0;
+            cart.forEach((item, index) => {
+                let itemTotal = item.unitPrice * item.qty;
+                total += itemTotal;
+                html += `<div class="preview-item-group">`;
+                html += `<div class="preview-item"><div class="preview-item-left"><strong>${index + 1}.</strong> ${item.name} <span class="preview-item-qty">x ${item.qty}</span> ແກ້ວ</div><div>${itemTotal.toLocaleString()}</div></div>`;
+                if (item.note && item.note.trim() !== '') { html += `<div class="preview-item-note">* ${item.note.trim()}</div>`; }
+                html += `</div>`;
+            });
+            
+            document.getElementById('preview-items').innerHTML = html;
+            document.getElementById('preview-total').innerText = total.toLocaleString() + ' LAK';
+            document.getElementById('cart').classList.remove('open');
+            document.getElementById('receipt-modal').style.display = 'flex';
+        }
+
+        function closeReceiptPreview() {
+            document.getElementById('receipt-modal').style.display = 'none';
+            document.getElementById('cart').classList.add('open');
+        }
+
+        function confirmWhatsApp() {
+            let phoneVal = document.getElementById('customer-phone-input').value.trim();
+
+            if (!isCashierMode && phoneVal === "") {
+                alert("⚠ ກະລຸນາໃສ່ເບີ WhatsApp ກ່ອນຈຶ່ງສາມາດສັ່ງຊື້ໄດ້!");
+                document.getElementById('customer-phone-input').focus();
+                return;
+            }
+
+            let fullPhone = "";
+            if (phoneVal !== "") {
+                let isForeign = document.getElementById('foreign-phone-toggle').checked;
+                fullPhone = isForeign ? ("+" + phoneVal) : ("+85620" + phoneVal);
+            } else {
+                fullPhone = "ບໍ່ໄດ້ລະບຸເບີ (ໜ້າຮ້ານ)";
+            }
+
+            localStorage.setItem('augustx_order_date', orderDateToSave);
+            localStorage.setItem('augustx_order_count', nextOrderCountToSave);
+
+            let totalPriceStr = document.getElementById('preview-total').innerText.replace(' LAK', '').replace(/,/g, '');
+            let customName = document.getElementById('customer-name-input').value.trim();
+            let displayTable = currentOrderNumberStr;
+            let nameTag = customName !== "" ? ` (${customName})` : "";
+            
+            if (isCashierMode) {
+                displayTable += `${nameTag} [ໜ້າຮ້ານ]` + (phoneVal !== "" ? ` - 📞 ${fullPhone}` : '');
+            } else {
+                displayTable += `${nameTag} - 📞 ${fullPhone}`;
+            }
+
+            let todayStr = new Date().toLocaleDateString('en-GB'); 
+            let timeStr = new Date().toLocaleTimeString('th-TH').slice(0,5);
+
+            let orderForKitchen = {
+                table: displayTable, 
+                source: isCashierMode ? 'store' : 'online', 
+                items: cart.map(item => ({
+                    name: item.name + (item.note ? ` [${item.note}]` : ''),
+                    quantity: item.qty,
+                    price: item.unitPrice
+                })),
+                total: parseInt(totalPriceStr),
+                time: timeStr,
+                date: todayStr,
+                status: 'pending',
+                timestamp: Date.now()
+            };
+
+            if (!isCashierMode) {
+                let text = `ສະບາຍດີ ຕ້ອງການສັ່ງອໍເດີ້ຈາກເວັບໄຊຕ໌:\nເລກທີອໍເດີ້: ${currentOrderNumberStr}\n`;
+                if(customName !== "") text += `ຊື່ລູກຄ້າ: ${customName}\n`;
+                text += `ເບີຕິດຕໍ່ WhatsApp: ${fullPhone}\n\n`;
+                
+                cart.forEach((item, index) => { 
+                    text += `${index + 1}. ${item.name} x ${item.qty} ແກ້ວ\n`; 
+                    if (item.note && item.note.trim() !== "") text += `  *ໝາຍເຫດ: ${item.note.trim()}\n`;
+                });
+                text += `\nລົບກວນທາງຮ້ານສະຫຼຸບຍອດ ແລະ ສົ່ງຄິວອາເພື່ອຊຳລະເງິນໃຫ້ແນ່ເດີ້ ຂໍຂອບໃຈ`;
+                window.open(`https://wa.me/8562077666667?text=${encodeURIComponent(text)}`, '_blank');
+            } else {
+                alert('✅ ບັນທຶກອໍເດີ້ເຂົ້າໜ້າຈໍຄົວສຳເລັດແລ້ວ!');
+            }
+            
+            document.getElementById('receipt-modal').style.display = 'none';
+            cart = [];
+            updateCartUI();
+            database.ref('orders').push(orderForKitchen);
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            if(isCashierMode) {
+                let confirmBtn = document.getElementById('confirm-btn');
+                if(confirmBtn) {
+                    confirmBtn.innerText = '✔ ບັນທຶກເຂົ້າຄົວ (ບໍ່ສົ່ງ WhatsApp)';
+                    confirmBtn.style.backgroundColor = '#1a365d'; 
+                }
+                let warningText = document.getElementById('warning-msg');
+                if(warningText) {
+                    warningText.style.color = '#1a365d';
+                    warningText.innerHTML = '✅ Cashier Mode: ບັນທຶກອໍເດີ້ລົງລະບົບທັນທີ (ບໍ່บังคับเบอร์)';
+                }
+                let printBtn = document.getElementById('print-btn-element');
+                if(printBtn) printBtn.style.display = 'block';
+            } else {
+                let printBtn = document.getElementById('print-btn-element');
+                if(printBtn) printBtn.style.display = 'none';
+                let btnBack = document.querySelector('.btn-back');
+                if(btnBack) btnBack.style.flex = '1';
+            }
+        });
+    </script>
+</body>
+</html>
